@@ -2414,8 +2414,8 @@ namespace AAXClasses
             aaxInputFormat = aaxOutputFormat;
        #endif
 
-        if (processor.isMidiEffect())
-            aaxInputFormat = aaxOutputFormat = AAX_eStemFormat_Mono;
+        // if (processor.isMidiEffect())
+        //     aaxInputFormat = aaxOutputFormat = AAX_eStemFormat_Mono;
 
         check (desc.AddAudioIn  (JUCEAlgorithmIDs::inputChannels));
         check (desc.AddAudioOut (JUCEAlgorithmIDs::outputChannels));
@@ -2586,11 +2586,20 @@ namespace AAXClasses
             // MIDI effect plug-ins do not support any audio channels
             jassert (numInputBuses == 0 && numOutputBuses == 0);
 
-            if (auto* desc = descriptor.NewComponentDescriptor())
-            {
-                createDescriptor (*desc, plugin->getBusesLayout(), *plugin, pluginIds, numMeters);
-                check (descriptor.AddComponent (desc));
-            }
+            auto bussTypes = std::vector<juce::AudioChannelSet> {
+                AudioChannelSet::mono(),
+                AudioChannelSet::stereo()
+            };
+            for (auto& bussType : bussTypes)
+                if (auto* desc = descriptor.NewComponentDescriptor())
+                {
+                    AudioProcessor::BusesLayout fakeLayout;
+                    fakeLayout.inputBuses.add(bussType);
+                    fakeLayout.outputBuses.add(bussType);
+
+                    createDescriptor(*desc, fakeLayout, *plugin, pluginIds, numMeters);
+                    check (descriptor.AddComponent (desc));
+                }
         }
         else
         {

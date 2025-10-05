@@ -1065,7 +1065,7 @@ public:
 
         if (popupDisplay == nullptr)
         {
-            popupDisplay.reset (new PopupDisplayComponent (owner, parentForPopupDisplay == nullptr));
+            popupDisplay.reset (new PopupDisplayComponent (owner, parentForPopupDisplay == nullptr, popupHorizontalOffset, popupVerticalOffset));
 
             if (parentForPopupDisplay != nullptr)
                 parentForPopupDisplay->addChildComponent (popupDisplay.get());
@@ -1352,6 +1352,8 @@ public:
 
     int popupHoverTimeout = 2000;
     double lastPopupDismissal = 0.0;
+    int popupHorizontalOffset = 0;
+    int popupVerticalOffset = 0;
 
     ModifierKeys singleClickModifiers;
 
@@ -1362,9 +1364,10 @@ public:
     struct PopupDisplayComponent final : public BubbleComponent,
                                          public Timer
     {
-        PopupDisplayComponent (Slider& s, bool isOnDesktop)
+        PopupDisplayComponent (Slider& s, bool isOnDesktop, int hOffset, int vOffset)
             : owner (s),
-              font (s.getLookAndFeel().getSliderPopupFont (s))
+            font (s.getLookAndFeel().getSliderPopupFont (s)),
+            horizontalOffset(hOffset), verticalOffset(vOffset)
         {
             if (isOnDesktop)
                 setTransform (AffineTransform::scale (Component::getApproximateScaleFactorForComponent (&s)));
@@ -1396,7 +1399,17 @@ public:
         void updatePosition (const String& newText)
         {
             text = newText;
-            BubbleComponent::setPosition (&owner);
+            if (horizontalOffset != 0 || verticalOffset != 0)
+            {
+                auto ownerPosition = isOnDesktop() ? owner.getScreenPosition() : owner.getPosition();
+                ownerPosition.x += horizontalOffset;
+                ownerPosition.y += verticalOffset;
+                BubbleComponent::setPosition (ownerPosition);
+            }
+            else
+            {
+                BubbleComponent::setPosition (&owner);
+            }
             repaint();
         }
 
@@ -1411,6 +1424,8 @@ public:
         Slider& owner;
         Font font;
         String text;
+        int horizontalOffset;
+        int verticalOffset;
 
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PopupDisplayComponent)
     };
@@ -1565,12 +1580,14 @@ void Slider::setChangeNotificationOnlyOnRelease (bool onlyNotifyOnRelease)
 bool Slider::getSliderSnapsToMousePosition() const noexcept           { return pimpl->snapsToMousePos; }
 void Slider::setSliderSnapsToMousePosition (bool shouldSnapToMouse)   { pimpl->snapsToMousePos = shouldSnapToMouse; }
 
-void Slider::setPopupDisplayEnabled (bool showOnDrag, bool showOnHover, Component* parent, int hoverTimeout)
+void Slider::setPopupDisplayEnabled (bool showOnDrag, bool showOnHover, Component* parent, int hoverTimeout, int horizontalOffset, int verticalOffset)
 {
     pimpl->showPopupOnDrag = showOnDrag;
     pimpl->showPopupOnHover = showOnHover;
     pimpl->parentForPopupDisplay = parent;
     pimpl->popupHoverTimeout = hoverTimeout;
+    pimpl->popupHorizontalOffset = horizontalOffset;
+    pimpl->popupVerticalOffset = verticalOffset;
 }
 
 Component* Slider::getCurrentPopupDisplay() const noexcept      { return pimpl->popupDisplay.get(); }
